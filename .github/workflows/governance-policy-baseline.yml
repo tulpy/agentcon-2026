@@ -77,7 +77,7 @@ jobs:
         if: steps.disabled.outputs.skip != 'true'
         id: changes
         run: |
-          git add .github/data/governance-policy-baseline.json
+          git add -f .github/data/governance-policy-baseline.json
           if git diff --cached --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
