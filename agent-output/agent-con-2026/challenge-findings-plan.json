@@ -1,0 +1,167 @@
+{
+  "schema_version": "1.0",
+  "challenged_artifact": "04-implementation-plan.md",
+  "artifact_type": "implementation-plan",
+  "review_focus": "comprehensive",
+  "pass_number": 1,
+  "risk_level": "high",
+  "must_fix_count": 3,
+  "should_fix_count": 3,
+  "suggestion_count": 5,
+  "review_type": "implementation",
+  "review_date": "2026-04-15",
+  "review_pass": 1,
+  "architecture_version": "App Service S1 + VNet + PE",
+  "summary": {
+    "total_findings": 11,
+    "critical": 1,
+    "high": 2,
+    "medium": 3,
+    "low": 5,
+    "categories": {
+      "correctness": 4,
+      "consistency": 3,
+      "compliance": 2,
+      "security": 2
+    },
+    "verdict": "FAIL",
+    "verdict_rationale": "One critical bug (IMP-001: ACR Standard SKU with private endpoints) will cause deployment failure. Two high-severity issues will cause functional problems: VNet address parameters are declared but never forwarded to the module (IMP-002), and the staging slot is non-functional without managed identity or RBAC (IMP-003). These three findings must be fixed before deployment. The remaining 8 findings are documentation consistency, compliance improvements, and minor security hardening that can be addressed in a subsequent pass.",
+    "must_fix_before_deploy": [
+      "IMP-001",
+      "IMP-002",
+      "IMP-003"
+    ]
+  },
+  "findings": [
+    {
+      "id": "IMP-001",
+      "severity": "must_fix",
+      "category": "correctness",
+      "claim": "Container Registry SKU is 'Standard' \u2014 private endpoints require 'Premium'",
+      "evidence": "In modules/container-registry.bicep, the ACR SKU is set to 'Standard' (acrSku: 'Standard'). The Standard SKU does NOT support private endpoints. The module also configures a private endpoint with DNS zone group, which will cause a deployment failure at the ARM level because the PE feature is gated behind the Premium SKU. This directly contradicts the implementation plan, preflight check, and governance document, all of which explicitly state ACR should use Premium SKU. The resource inventory table says 'Container Registry is upgraded to Premium SKU to support private endpoints'.",
+      "impact": "",
+      "artifact_section": "",
+      "traces_to": [],
+      "suggested_fix": {
+        "artifact_path": "04-implementation-plan.md",
+        "proposed_edit": "In modules/container-registry.bicep, the ACR SKU is set to 'Standard' (acrSku: 'Standard'). The Standard SKU does NOT support private endpoints. The module also configures a private endpoint with DNS zone group, which will cause a deployment failure at the ARM level because the PE feature is gated behind the Premium SKU. This directly contradicts the implementation plan, preflight check, and governance document, all of which explicitly state ACR should use Premium SKU. The resource inventory table says 'Container Registry is upgraded to Premium SKU to support private endpoints'."
+      }
+    },
+    {
+      "id": "IMP-002",
+      "severity": "must_fix",
+      "category": "correctness",
+      "claim": "VNet address parameters declared in main.bicep but never passed to virtual-network module",
+      "evidence": "main.bicep declares three VNet-related parameters: vnetAddressPrefix (default '10.0.0.0/16'), appServiceSubnetPrefix (default '10.0.1.0/24'), and privateEndpointSubnetPrefix (default '10.0.2.0/24'). However, the virtualNetwork module call only passes name, location, tags, and logAnalyticsWorkspaceResourceId \u2014 the three address parameters are never forwarded. The virtual-network module uses its own internal defaults: addressPrefix '10.0.0.0/24', appServiceSubnetPrefix '10.0.0.0/27', and privateEndpointsSubnetPrefix '10.0.0.32/27'. The deployed VNet will have a /24 address space with two /27 subnets (30 usable IPs each) instead of the planned /16 address space with two /24 subnets (254 usable IPs each). The /27 subnets are very tight for App Service VNet integration (which can consume IPs quickly during scale-out) and multiple private endpoints.",
+      "impact": "",
+      "artifact_section": "",
+      "traces_to": [],
+      "suggested_fix": {
+        "artifact_path": "04-implementation-plan.md",
+        "proposed_edit": "main.bicep declares three VNet-related parameters: vnetAddressPrefix (default '10.0.0.0/16'), appServiceSubnetPrefix (default '10.0.1.0/24'), and privateEndpointSubnetPrefix (default '10.0.2.0/24'). However, the virtualNetwork module call only passes name, location, tags, and logAnalyticsWorkspaceResourceId \u2014 the three address parameters are never forwarded. The virtual-network module uses its own internal defaults: addressPrefix '10.0.0.0/24', appServiceSubnetPrefix '10.0.0.0/27', and privateEndpointsSubnetPrefix '10.0.0.32/27'. The deployed VNet will have a /24 address space with two /27 subnets (30 usable IPs each) instead of the planned /16 address space with two /24 subnets (254 usable IPs each). The /27 subnets are very tight for App Service VNet integration (which can consume IPs quickly during scale-out) and multiple private endpoints."
+      }
+    },
+    {
+      "id": "IMP-003",
+      "severity": "must_fix",
+      "category": "correctness",
+      "claim": "Staging slot lacks managed identity, app settings, and RBAC \u2014 non-functional for blue-green deployment",
+      "evidence": "The staging slot defined in modules/web-app.bicep only configures siteConfig (linuxFxVersion, acrUseManagedIdentityCreds, http20Enabled, minTlsVersion, ftpsState, alwaysOn). It does NOT define: (1) managedIdentities: { systemAssigned: true } \u2014 without this, the slot has no identity and acrUseManagedIdentityCreds cannot work; (2) appSettingsKeyValuePairs \u2014 the slot won't have APPLICATIONINSIGHTS_CONNECTION_STRING, AZURE_STORAGE_ACCOUNT_NAME, AZURE_KEYVAULT_URI, or DOCKER_REGISTRY_SERVER_URL; (3) RBAC role assignments \u2014 even if the slot gets an identity, it has no Key Vault Secrets User, Storage Table Data Contributor, or AcrPull roles. The staging slot is effectively non-functional and cannot pull container images, resolve KV references, or access storage.",
+      "impact": "",
+      "artifact_section": "",
+      "traces_to": [],
+      "suggested_fix": {
+        "artifact_path": "04-implementation-plan.md",
+        "proposed_edit": "The staging slot defined in modules/web-app.bicep only configures siteConfig (linuxFxVersion, acrUseManagedIdentityCreds, http20Enabled, minTlsVersion, ftpsState, alwaysOn). It does NOT define: (1) managedIdentities: { systemAssigned: true } \u2014 without this, the slot has no identity and acrUseManagedIdentityCreds cannot work; (2) appSettingsKeyValuePairs \u2014 the slot won't have APPLICATIONINSIGHTS_CONNECTION_STRING, AZURE_STORAGE_ACCOUNT_NAME, AZURE_KEYVAULT_URI, or DOCKER_REGISTRY_SERVER_URL; (3) RBAC role assignments \u2014 even if the slot gets an identity, it has no Key Vault Secrets User, Storage Table Data Contributor, or AcrPull roles. The staging slot is effectively non-functional and cannot pull container images, resolve KV references, or access storage."
+      }
+    },
+    {
+      "id": "IMP-004",
+      "severity": "should_fix",
+      "category": "consistency",
+      "claim": "Implementation reference AVM version table shows 'latest' for pinned modules",
+      "evidence": "The 05-implementation-reference.md AVM Module Versions table lists 'latest' for Log Analytics (actual: 0.15.0), App Insights (actual: 0.7.1), Key Vault (actual: 0.13.3), Storage (actual: 0.32.0), and Container Registry (actual: 0.12.1). The actual Bicep code uses explicit pinned version references. This inconsistency between the documentation and the deployed code creates confusion for compliance auditors who need to verify exact module versions.",
+      "impact": "",
+      "artifact_section": "",
+      "traces_to": []
+    },
+    {
+      "id": "IMP-005",
+      "severity": "should_fix",
+      "category": "compliance",
+      "claim": "Storage account diagnostic settings capture only metrics \u2014 no operation logs",
+      "evidence": "The storage account module (modules/storage.bicep) configures diagnosticSettings with only metricCategories (AllMetrics) at both the account and table-service levels. No logCategoriesAndGroups are specified. This means storage read/write/delete operations are not captured in Log Analytics. Azure Security Baseline best practices recommend enabling StorageRead, StorageWrite, and StorageDelete logs for audit trails. The Key Vault and ACR modules correctly include allLogs category groups, making storage the outlier.",
+      "impact": "",
+      "artifact_section": "",
+      "traces_to": []
+    },
+    {
+      "id": "IMP-006",
+      "severity": "should_fix",
+      "category": "consistency",
+      "claim": "Budget API version differs between implementation plan and code",
+      "evidence": "The implementation plan (04-implementation-plan.md) resource inventory table lists the budget as using API version '2023-11-01'. The actual budget.bicep module uses 'Microsoft.Consumption/budgets@2024-08-01'. The code uses a newer API version, which is fine functionally, but the plan document is stale.",
+      "impact": "",
+      "artifact_section": "",
+      "traces_to": []
+    },
+    {
+      "id": "IMP-007",
+      "severity": "suggestion",
+      "category": "correctness",
+      "claim": "Phase 'cost-monitoring' is functionally identical to 'all'",
+      "evidence": "The condition variable arrays in main.bicep make 'cost-monitoring' deploy all 5 phases: deployNetworking, deploySecurityDataImages, deployCompute, and deployCostMonitoring all include 'cost-monitoring' in their arrays. This means selecting phase='cost-monitoring' deploys everything \u2014 identical to phase='all'. The @allowed decorator includes both values, creating a redundant option that may confuse operators.",
+      "impact": "",
+      "artifact_section": "",
+      "traces_to": []
+    },
+    {
+      "id": "IMP-008",
+      "severity": "suggestion",
+      "category": "security",
+      "claim": "Key Vault softDeleteRetentionInDays set to 7 \u2014 minimum allowed",
+      "evidence": "The Key Vault module sets softDeleteRetentionInDays: 7, which is the minimum allowed by Azure. The Azure default is 90 days. For a demo workload this is acceptable, but if the Key Vault stores any production secrets or the environment is reused, the 7-day window provides minimal protection against accidental deletion. The short retention also means that after a KV is deleted, the name becomes available for reuse in only 7 days, which could be a concern for name squatting.",
+      "impact": "",
+      "artifact_section": "",
+      "traces_to": []
+    },
+    {
+      "id": "IMP-009",
+      "severity": "suggestion",
+      "category": "compliance",
+      "claim": "Private DNS zones have no diagnostic settings",
+      "evidence": "The private-dns-zones.bicep module creates three DNS zones but does not configure any diagnosticSettings. While DNS zone diagnostics are limited (primarily query volume metrics), other modules consistently apply diagnostic settings for completeness. The Key Vault, Storage, ACR, VNet, App Service Plan, and Web App all have diagnostics configured.",
+      "impact": "",
+      "artifact_section": "",
+      "traces_to": []
+    },
+    {
+      "id": "IMP-010",
+      "severity": "suggestion",
+      "category": "consistency",
+      "claim": "Redundant networkAcls on Key Vault and Storage with publicNetworkAccess: 'Disabled'",
+      "evidence": "Both key-vault.bicep and storage.bicep set publicNetworkAccess: 'Disabled' AND networkAcls: { bypass: 'AzureServices', defaultAction: 'Deny' }. When publicNetworkAccess is Disabled, the networkAcls firewall rules are irrelevant because no public traffic reaches the resource \u2014 all access must go through private endpoints. The redundant networkAcls configuration adds visual noise and may confuse reviewers into thinking public network access is partially allowed.",
+      "impact": "",
+      "artifact_section": "",
+      "traces_to": []
+    },
+    {
+      "id": "IMP-011",
+      "severity": "suggestion",
+      "category": "security",
+      "claim": "App Insights connection string exposed in main.bicep deployment outputs",
+      "evidence": "main.bicep exposes the App Insights connection string as a deployment output: 'output appInsightsConnectionString string = appInsights.outputs.connectionString'. The connection string is also properly stored in Key Vault as a secret and referenced via KV reference in the web app. However, the deployment output makes the connection string visible in the Azure deployment history to anyone with Reader access on the resource group. While App Insights connection strings are not highly sensitive (read-only telemetry ingestion endpoints), this contradicts the security pattern of routing secrets through Key Vault.",
+      "impact": "",
+      "artifact_section": "",
+      "traces_to": []
+    }
+  ],
+  "cache_inputs": {
+    "artifact_sha": "legacy-migration",
+    "checklists_sha": "legacy-migration",
+    "protocol_sha": "legacy-migration",
+    "subagent_sha": "legacy-migration",
+    "model": "legacy-migration",
+    "artifact_hash": "legacy-migration"
+  }
+}

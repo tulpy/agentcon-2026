@@ -28,8 +28,9 @@ Deep-dive content lives in `references/` — load on demand.
 
 | Service             | Default Region       | Reason                         |
 | ------------------- | -------------------- | ------------------------------ |
-| **All resources**   | `australiaeast`      | Primary             |
-| **Failover**        | `australiasoutheast` | Secondary        |
+| **All resources**   | `swedencentral`      | EU GDPR-compliant              |
+| **Static Web Apps** | `westeurope`         | Not available in swedencentral |
+| **Failover**        | `germanywestcentral` | EU paired alternative          |
 
 ### Required Tags (Azure Policy Enforced)
 

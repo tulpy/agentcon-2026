@@ -347,13 +347,14 @@ function findProjects() {
   for (const p of globSync("agent-output/*/sku-manifest.json", { cwd: ROOT, nodir: true })) {
     out.add(p.split("/")[1]);
   }
+  const NON_PROJECT_ENTRIES = new Set(["AGENTS.md", "README.md"]);
   for (const p of globSync("infra/bicep/*", { cwd: ROOT })) {
     const project = p.split("/")[2];
-    if (project && project !== "AGENTS.md") out.add(project);
+    if (project && !NON_PROJECT_ENTRIES.has(project)) out.add(project);
   }
   for (const p of globSync("infra/terraform/*", { cwd: ROOT })) {
     const project = p.split("/")[2];
-    if (project && project !== "AGENTS.md") out.add(project);
+    if (project && !NON_PROJECT_ENTRIES.has(project)) out.add(project);
   }
   return [...out];
 }

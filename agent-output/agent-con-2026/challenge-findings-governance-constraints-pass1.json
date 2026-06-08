@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0",
+  "challenged_artifact": "04-governance-constraints.md",
+  "artifact_type": "governance-constraints",
+  "review_focus": "comprehensive",
+  "pass_number": 1,
+  "risk_level": "medium",
+  "must_fix_count": 0,
+  "should_fix_count": 3,
+  "suggestion_count": 1,
+  "review_type": "governance",
+  "review_date": "2026-04-15",
+  "review_pass": 1,
+  "architecture_version": "App Service S1 + VNet + PE",
+  "summary": {
+    "total_findings": 4,
+    "critical": 0,
+    "high": 0,
+    "medium": 3,
+    "low": 1,
+    "categories": {
+      "consistency": 2,
+      "compliance": 1,
+      "risk": 1
+    },
+    "verdict": "PASS_WITH_FINDINGS",
+    "verdict_rationale": "The governance constraints document is thorough and well-evidenced from live REST API discovery. The only true deployment blocker (9-tag resource group deny policy) is correctly identified and mitigated. No critical or high severity findings. Three medium findings relate to documentation consistency and a gap in App Service public endpoint assessment. All findings are addressable without architectural changes."
+  },
+  "findings": [
+    {
+      "id": "GOV-001",
+      "severity": "should_fix",
+      "category": "consistency",
+      "claim": "Preflight check retains Container Apps terminology",
+      "evidence": "The preflight check (04-preflight-check.md) contains a collapsible section titled 'Managed Environment Parameters' which is Azure Container Apps terminology. The content within the section actually describes App Service Plan parameters (kind, reserved, skuName, skuCapacity). This is a leftover from a previous architecture iteration that used Container Apps and was not updated when the design pivoted to App Service.",
+      "impact": "",
+      "artifact_section": "",
+      "traces_to": []
+    },
+    {
+      "id": "GOV-002",
+      "severity": "should_fix",
+      "category": "compliance",
+      "claim": "No governance assessment of App Service public endpoint",
+      "evidence": "The governance constraints document thoroughly documents that Key Vault, Storage, and ACR have publicNetworkAccess set to 'Disabled' with PE-only access. However, the Web App retains a public HTTPS endpoint for customer/staff access. The document does not assess whether the Azure Security Baseline initiative (assigned at management group scope) audits public network access on App Service resources. If the initiative's AuditIfNotExists policies cover Microsoft.Web/sites, the deployment would generate a non-compliant resource in the Azure Policy compliance dashboard.",
+      "impact": "",
+      "artifact_section": "",
+      "traces_to": []
+    },
+    {
+      "id": "GOV-003",
+      "severity": "suggestion",
+      "category": "risk",
+      "claim": "Portal validation deferred \u2014 incomplete audit trail",
+      "evidence": "The governance document states 'Portal Validation: Not performed in this session' and 'assignment coverage is REST-verified but was not cross-checked in Azure Portal'. While the REST API discovery covered 21 assignments, the absence of portal cross-validation means there is no secondary confirmation that all active assignments were captured. The companion JSON reports discovery_status as COMPLETE despite this gap.",
+      "impact": "",
+      "artifact_section": "",
+      "traces_to": []
+    },
+    {
+      "id": "GOV-004",
+      "severity": "should_fix",
+      "category": "consistency",
+      "claim": "Tag key casing drift between governance requirements and IaC code",
+      "evidence": "The governance deny policy requires lowercase tag keys: 'environment', 'owner'. The Bicep code in main.bicep uses PascalCase: 'Environment', 'Owner'. Azure Policy tag evaluation is case-insensitive, so this will not cause a deployment failure. However, the visual inconsistency between the governance requirement documentation (lowercase) and the IaC code (PascalCase) creates confusion for compliance reviewers auditing tag alignment. Additionally, the Modify policy that inherits tags from the resource group may create child resources with both casings if the policy applies a different casing than the IaC-applied tags.",
+      "impact": "",
+      "artifact_section": "",
+      "traces_to": []
+    }
+  ],
+  "cache_inputs": {
+    "artifact_sha": "legacy-migration",
+    "checklists_sha": "legacy-migration",
+    "protocol_sha": "legacy-migration",
+    "subagent_sha": "legacy-migration",
+    "model": "legacy-migration",
+    "artifact_hash": "legacy-migration"
+  }
+}
