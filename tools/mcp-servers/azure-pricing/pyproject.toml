@@ -57,7 +57,7 @@ dev = [
     "mypy>=1.13.0",
     "ruff>=0.7.0",
     "pre-commit>=4.0.0",
-    "bandit>=1.8.0",
+    "bandit>=1.9.4",
     "tiktoken>=0.8.0",
 ]
 
